@@ -79,7 +79,7 @@ Kiểm thử API gọi handler Workers với client libSQL và CSDL riêng. Ki�
 
 Kiểm thử API còn kiểm tra giá frontend bị sửa, sản phẩm ngừng bán, snapshot tên/giá, gửi đồng thời cùng khóa, rollback khi lưu chi tiết lỗi, CSRF, cookie HTTPS, API quản trị không có quyền, phiên hết hạn và giới hạn đăng nhập. Runtime Workers local đã được kiểm tra riêng với Turso thật cho health/menu, HTML/admin, chặn truy cập chưa đăng nhập và băm mật khẩu khi đăng nhập sai. Chưa chạy luồng tạo đơn/đăng nhập admin thật trên Turso để tránh tạo dữ liệu thử trong CSDL cửa hàng.
 
-## Cloudflare deployment (chưa thực hiện)
+## Cloudflare deployment
 
 Cấu hình Worker và static assets nằm trong `wrangler.jsonc`; assets đi qua Worker để thêm header bảo mật. Khi sẵn sàng, đăng nhập và nhập secrets bằng prompt kín của Wrangler:
 
@@ -97,3 +97,13 @@ npx wrangler deploy
 Dùng đúng `AUTH_SECRET` đã dùng tạo admin cho CSDL mục tiêu. Có thể nhập secrets trong Cloudflare dashboard. Không đặt secrets trong `wrangler.jsonc`, mã frontend hay README. Migration là lệnh riêng, không tự chạy khi khởi động Worker. Sau deploy, kiểm tra HTTPS, menu, giỏ, đơn COD và quản trị; không cần R2.
 
 Tài liệu chính thức: [libSQL transactions](https://tursodatabase.github.io/libsql-client-ts/interfaces/Transaction.html), [Workers Web Crypto](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/), [Wrangler secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
+
+## Deploy cùng cấu hình đang chạy local
+
+`.dev.vars` chỉ phục vụ local, không được Wrangler tự tải lên khi deploy. Worker bắt buộc có `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `AUTH_SECRET` đúng tên. Không dùng URL CSDL làm tên secret. Thiếu `AUTH_SECRET` khiến đăng nhập, đặt hàng và tải ảnh lên thất bại.
+
+Sau khi đăng nhập Cloudflare bằng `npx wrangler login`, chạy `npm run deploy:check` để kiểm tra kết nối/schema, áp dụng migration còn thiếu và build thử. Khi muốn cập nhật website thật, chạy `npm run deploy`: lệnh kiểm tra/migrate CSDL từ `.dev.vars`, đồng bộ đúng ba secrets qua stdin không ghi file tạm hoặc in giá trị, rồi deploy cả Worker và frontend. Giữ nguyên `AUTH_SECRET` đã dùng tạo admin. Đảm bảo `.dev.vars` là CSDL bạn muốn dùng trên website thật. Token đã bị tiết lộ phải được thu hồi và thay bằng token mới trong `.dev.vars` rồi chạy deploy.
+
+Các secrets được khai báo bắt buộc trong `wrangler.jsonc`, nên chạy deploy thủ công thiếu secret sẽ bị Wrangler báo lỗi thay vì tạo bản chạy thiếu cấu hình. [Cloudflare secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
+
+Bản sửa cấu hình đã deploy tại https://milk-tea-shop.nguyennongthu762.workers.dev. Đã kiểm tra website thật: `/api/health` và `/api/products` trả 200; `/api/admin/session` khi chưa đăng nhập và `/api/admin/login` với thông tin thử sai trả 401. CSDL có một admin. Chưa thử mật khẩu admin của chủ cửa hàng.
